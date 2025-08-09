@@ -1,4 +1,4 @@
-from typing import Optional, Callable
+from typing import Optional, Callable, Type
 
 from datetime import datetime
 from pydantic import BaseModel
@@ -9,12 +9,12 @@ class LLMRequest(BaseModel):
     prompt: str
     background: Optional[str]
     context: Optional[list[BaseModel | str]]
-    expected_format: Optional[BaseModel]
+    expected_format: Optional[Type[BaseModel]]
 
 
 # giga (orchestrator) related data models
 class Task(BaseModel):
-    func: Callable
+    func: Callable # output should be a tuple
     args: tuple
 
 
@@ -41,6 +41,7 @@ class Position(BaseModel):
     symbol: str
     shares: float
     value: Optional[float]
+    rules: list[Rule]
 
 
 class Portfolio(BaseModel):
