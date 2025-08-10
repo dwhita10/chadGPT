@@ -1,4 +1,4 @@
-from typing import Optional, Callable, Type
+from typing import Optional, Callable, Type, Literal
 
 from datetime import datetime
 from pydantic import BaseModel
@@ -12,7 +12,7 @@ class LLMRequest(BaseModel):
     expected_format: Optional[Type[BaseModel]]
 
 
-# giga (orchestrator) related data models
+# Orchestrator related data models
 class Task(BaseModel):
     func: Callable # output should be a tuple
     args: tuple
@@ -30,7 +30,26 @@ class Rule(BaseModel):
     sell_date: Optional[datetime]
 
 
-class Trade(BaseModel):
+class Stock(BaseModel):
+    symbol: str
+    price: float
+    time: Optional[datetime]
+
+
+class StockBar(BaseModel):
+    symbol: str
+    time: datetime
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: int
+    trade_count: int
+    volume_weighted_avg_price: float
+
+
+class TradeOrder(BaseModel):
+    type: Literal['buy', 'sell']
     symbol: str
     amount: float
     trade_time: Optional[datetime]
@@ -39,10 +58,10 @@ class Trade(BaseModel):
 
 class Position(BaseModel):
     symbol: str
-    shares: float
-    value: Optional[float]
+    shares: float | None
     rules: list[Rule]
-
+    value: Optional[float]
+    
 
 class Portfolio(BaseModel):
     positions: list[Position]
