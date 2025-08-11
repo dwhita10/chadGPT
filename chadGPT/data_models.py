@@ -8,7 +8,7 @@ from pydantic import BaseModel
 class LLMRequest(BaseModel):
     prompt: str
     background: Optional[str]
-    context: Optional[list[BaseModel | str]]
+    context: Optional[list[BaseModel] | str]
     expected_format: Optional[Type[BaseModel]]
 
 
