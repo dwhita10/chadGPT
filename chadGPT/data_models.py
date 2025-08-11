@@ -66,4 +66,15 @@ class Position(BaseModel):
 class Portfolio(BaseModel):
     positions: list[Position]
     cash: float
+    timestamp: Optional[datetime]
 
+
+class DesiredPosition(BaseModel):
+    symbol: str
+    amount: float
+    amount_type: Literal['USD', 'Percent of Portfolio'] = 'USD'
+    rule: Rule | None = None
+
+class DesiredPortfolio(BaseModel):
+    positions: list[DesiredPosition]
+    cash: float
