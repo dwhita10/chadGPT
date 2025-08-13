@@ -4,6 +4,19 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
+# giga related data models (user preferences)
+class Preferences(BaseModel):
+    research_prompt: str | None = None
+    portfolio_update_prompt: str | None = None
+    portfolio_update_frequency: Literal['hourly', 'daily', 'weekly'] = 'daily'
+    strategy_update_frequency: Literal['daily', 'weekly', 'monthly'] = 'weekly'
+    max_take_profit_percent: float = 0.15
+    max_stop_loss_percent: float = 0.10
+    max_hold_time_days: int = 7
+    max_portfolio_size: int = 15
+    trade_type: Literal['paper', 'live'] = 'paper'
+
+
 # brain related data models (LLM)
 class LLMRequest(BaseModel):
     prompt: str
@@ -53,28 +66,29 @@ class TradeOrder(BaseModel):
     symbol: str
     amount: float
     trade_time: Optional[datetime]
-    rules: list[Rule]
+    rules: Rule
 
 
 class Position(BaseModel):
     symbol: str
-    shares: float | None
-    rules: list[Rule]
-    value: Optional[float]
+    shares: float
+    rules: Rule
+    value: float
     
 
 class Portfolio(BaseModel):
     positions: list[Position]
     cash: float
-    timestamp: Optional[datetime]
+    total_value: float
+    timestamp: datetime
 
 
-class DesiredPosition(BaseModel):
+class RelativePosition(BaseModel):
     symbol: str
-    amount: float
-    amount_type: Literal['USD', 'Percent of Portfolio'] = 'USD'
-    rule: Rule | None = None
+    percent_of_portfolio: float
+    rules: Rule
 
-class DesiredPortfolio(BaseModel):
-    positions: list[DesiredPosition]
-    cash: float
+
+class RelativePortfolio(BaseModel):
+    positions: list[RelativePosition]
+    percent_cash: float

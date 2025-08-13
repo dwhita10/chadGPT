@@ -25,7 +25,7 @@ class BaseLLM(ABC):
         else:
             raise ValueError(f"invalid delimiter_type: {delimiter_type}")
 
-    def format_data_model(self, model: BaseModel | list[BaseModel]) -> str:
+    def format_data_model(self, model: BaseModel | str | list[BaseModel | str]) -> str:
         if isinstance(model, list):
             query = "{\n"
             query += ",\n".join([self.format_data_model(m) for m in model])
@@ -35,6 +35,8 @@ class BaseLLM(ABC):
                 f"{model.__name__}: " +
                 f"{model.model_dump_json(indent=None, warnings=False)}"
             )
+        elif isinstance(model, str):
+            query = model
         else:
             raise TypeError(
                 f'Arg model must be type BaseModel or list[BaseModel]; ' +
@@ -84,10 +86,11 @@ class BaseLLM(ABC):
 
 class ConsoleLLM(BaseLLM):
     def submit_query(self, query: str) -> str:
-        print(query)
+        # print(query)
         pyperclip.copy(query)
         print(
-            'Query copied! Copy the output before ' \
+            'Query copied! Paste into your favorite ' \
+            'LLM tool and copy the output before ' \
             'continuing (or paste output below)'
         )
         output = input('output:')
@@ -114,4 +117,3 @@ if __name__ == "__main__":
     answer = llm.ask(request)
     assert isinstance(answer, request.expected_format)
     print(type(answer))
-    

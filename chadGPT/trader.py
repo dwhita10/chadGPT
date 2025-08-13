@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 
 from chadGPT.data_models import (
-    TradeOrder, Rule, Position, Portfolio, DesiredPortfolio,
+    TradeOrder, Rule, Position, Portfolio, RelativePortfolio,
     Stock, StockBar
 )
 
@@ -29,66 +29,60 @@ class BaseMarketResearch(ABC):
 
 def make_trades_from_portfolio(
     current_portfolio: Portfolio,
-    desired_portfolio: DesiredPortfolio
+    desired_portfolio: RelativePortfolio
 ) -> list[TradeOrder]:
-    trade_orders = []
-    current_positions = {p.symbol: p for p in current_portfolio.positions}
-    desired_positions = {p.symbol: p for p in desired_portfolio.positions}
+    """
+    Compare current portfolio to desired portfolio and generate TradeOrders
+    to rebalance positions.
+    """
+    trades: list[TradeOrder] = []
 
-    # Handle buys and adjustments
-    for symbol, desired_pos in desired_positions.items():
-        current_pos = current_positions.get(symbol)
-        desired_amount = desired_pos.amount
-        if current_pos is None or not current_pos.shares:
-            # New position, buy full desired amount
-            trade_orders.append(
-                TradeOrder(
-                    type='buy',
-                    symbol=symbol,
-                    amount=desired_amount,
-                    trade_time=None,
-                    rules=[]
-                )
-            )
+    # Build lookup for current positions
+    current_positions = {pos.symbol: pos for pos in current_portfolio.positions}
+    total_value = current_portfolio.total_value
+
+    # Build lookup for desired positions
+    desired_positions = {pos.symbol: pos for pos in desired_portfolio.positions}
+
+    # Process sells and adjustments
+    for symbol, pos in current_positions.items():
+        desired = desired_positions.get(symbol)
+        if not desired:
+            # Sell entire position if not in desired portfolio
+            trades.append(TradeOrder(
+                type='sell',
+                symbol=symbol,
+                amount=pos.shares,
+                trade_time=None,
+                rules=pos.rules
+            ))
         else:
-            current_amount = current_pos.shares
-            diff = desired_amount - current_amount
-            if diff > 0:
-                trade_orders.append(
-                    TradeOrder(
-                        type='buy',
-                        symbol=symbol,
-                        amount=diff,
-                        trade_time=None,
-                        rules=current_pos.rules
-                    )
-                )
-            elif diff < 0:
-                trade_orders.append(
-                    TradeOrder(
-                        type='sell',
-                        symbol=symbol,
-                        amount=abs(diff),
-                        trade_time=None,
-                        rules=current_pos.rules
-                    )
-                )
+            # Adjust position if needed
+            desired_amount = (desired.percent_of_portfolio * total_value) / pos.value * pos.shares if pos.value > 0 else 0
+            diff = desired_amount - pos.shares
+            if abs(diff) > 1e-6:
+                trade_type = 'buy' if diff > 0 else 'sell'
+                trades.append(TradeOrder(
+                    type=trade_type,
+                    symbol=symbol,
+                    amount=abs(diff),
+                    trade_time=None,
+                    rules=desired.rules or pos.rules
+                ))
 
-    # Handle sells for positions not in desired portfolio
-    for symbol, current_pos in current_positions.items():
-        if symbol not in desired_positions:
-            if current_pos.shares and current_pos.shares > 0:
-                trade_orders.append(
-                    TradeOrder(
-                        type='sell',
-                        symbol=symbol,
-                        amount=current_pos.shares,
-                        trade_time=None,
-                        rules=current_pos.rules
-                    )
-                )
+    # Process buys for new positions
+    for symbol, desired in desired_positions.items():
+        if symbol not in current_positions:
+            # Buy new position
+            amount = (desired.percent_of_portfolio * total_value) / desired_portfolio.cash if desired_portfolio.cash > 0 else 0
+            trades.append(TradeOrder(
+                type='buy',
+                symbol=symbol,
+                amount=amount,
+                trade_time=None,
+                rules=desired.rules or Rule()
+            ))
 
-    return trade_orders
-
+    return trades
 
 # TODO: Alpaca-Py Implementation https://alpaca.markets/sdks/python/getting_started.html
