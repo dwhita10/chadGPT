@@ -85,4 +85,22 @@ def make_trades_from_portfolio(
 
     return trades
 
+# testing implementation
+
+class FakeBroker(BaseBroker):
+    def create_order(self, trade: TradeOrder):
+        print(f"Executing trade: {trade.type} {trade.amount} of {trade.symbol}")
+    
+    def get_portfolio(self) -> Portfolio:
+        # return a dummy portfolio for testing
+        return Portfolio(
+            total_value=10000.0,
+            cash=2000.0,
+            positions=[
+                Position(symbol='AAPL', shares=10, value=1500.0, rules=Rule()),
+                Position(symbol='GOOGL', shares=5, value=2000.0, rules=Rule()),
+                Position(symbol='TSLA', shares=8, value=2500.0, rules=Rule()),
+            ]
+        )
+
 # TODO: Alpaca-Py Implementation https://alpaca.markets/sdks/python/getting_started.html

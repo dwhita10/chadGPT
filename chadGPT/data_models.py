@@ -25,6 +25,11 @@ class LLMRequest(BaseModel):
     expected_format: Optional[Type[BaseModel]]
 
 
+class StrategyResponse(BaseModel):
+    strategy_report: str
+    stock_symbols_to_watch: list[str]
+
+
 # Orchestrator related data models
 class Task(BaseModel):
     func: Callable # output should be a tuple

@@ -8,6 +8,36 @@ import pyperclip
 from chadGPT.data_models import LLMRequest, Portfolio
 
 
+def apply_delimiter(
+    block_name: str, query: str, delimiter_type: Literal['<html>', 'caps:']
+) -> str:
+    if delimiter_type == '<html>':
+        return f"\n<{block_name}>\n{query}\n</{block_name}>\n"
+    elif delimiter_type == 'caps:':
+        return f"<{block_name.upper()}:\n{query}\n"
+    else:
+        raise ValueError(f"invalid delimiter_type: {delimiter_type}")
+
+
+def format_data_model(model: BaseModel | str | list[BaseModel | str]) -> str:
+    if isinstance(model, list):
+        query = "{\n"
+        query += ",\n".join([format_data_model(m) for m in model])
+        query += "\n}"
+    elif isinstance(model, BaseModel):
+        query = (
+            f"{model.__name__}: " +
+            f"{model.model_dump_json(indent=None, warnings=False)}"
+        )
+    elif isinstance(model, str):
+        query = model
+    else:
+        raise TypeError(
+            f'Arg model must be type BaseModel or list[BaseModel]; ' +
+            f'got {type(model)}'
+        )
+
+
 class BaseLLM(ABC):
 
     @abstractmethod
@@ -15,52 +45,24 @@ class BaseLLM(ABC):
         pass
     
     @staticmethod
-    def apply_delimiter(
-        block_name: str, query: str, delimiter_type: Literal['<html>', 'caps:']
-    ) -> str:
-        if delimiter_type == '<html>':
-            return f"\n<{block_name}>\n{query}\n</{block_name}>\n"
-        elif delimiter_type == 'caps:':
-            return f"<{block_name.upper()}:\n{query}\n"
-        else:
-            raise ValueError(f"invalid delimiter_type: {delimiter_type}")
-
-    def format_data_model(self, model: BaseModel | str | list[BaseModel | str]) -> str:
-        if isinstance(model, list):
-            query = "{\n"
-            query += ",\n".join([self.format_data_model(m) for m in model])
-            query += "\n}"
-        elif isinstance(model, BaseModel):
-            query = (
-                f"{model.__name__}: " +
-                f"{model.model_dump_json(indent=None, warnings=False)}"
-            )
-        elif isinstance(model, str):
-            query = model
-        else:
-            raise TypeError(
-                f'Arg model must be type BaseModel or list[BaseModel]; ' +
-                f'got {type(model)}'
-            )
-
-    def ask(self, request: LLMRequest) -> str | BaseModel:
+    def make_query(request: LLMRequest) -> str:
         # unpack the query
         query = ""
-        query += self.apply_delimiter(
+        query += apply_delimiter(
             block_name='background',
             query=request.background,
             delimiter_type='<html>'
         )
         if isinstance(request.context,str):
-            query += self.apply_delimiter(
+            query += apply_delimiter(
                 block_name='context',
                 query=request.context,
                 delimiter_type='<html>'
             )
         else:
-            query += self.apply_delimiter(
+            query += apply_delimiter(
                 block_name='context',
-                query=self.format_data_model(request.context),
+                query=format_data_model(request.context),
                 delimiter_type='<html>'
             )
         
@@ -68,9 +70,19 @@ class BaseLLM(ABC):
 
         if request.expected_format is not None:
 
-            query += f"Please return an answer matching the below format (given by the pydantic basemodel.model_json_schema() function):\n"
-            query += f"{json.dumps(request.expected_format.model_json_schema(), indent=2)}"
+            expected_response = f"Please return an answer matching the below format (given by the pydantic basemodel.model_json_schema() function):\n"
+            expected_response += f"{json.dumps(request.expected_format.model_json_schema(), indent=2)}"
+            query += apply_delimiter(
+                block_name='expected_format',
+                query=expected_response,
+                delimiter_type='<html>'
+            )
         
+        return query
+
+
+    def ask(self, request: LLMRequest) -> str | BaseModel:
+        query = self.make_query(request)
         answer = self.submit_query(query)
 
         if request.expected_format:
