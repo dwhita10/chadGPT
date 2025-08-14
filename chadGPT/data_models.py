@@ -12,7 +12,6 @@ class Preferences(BaseModel):
     strategy_update_frequency: Literal['daily', 'weekly', 'monthly'] = 'weekly'
     max_take_profit_percent: float = 0.15
     max_stop_loss_percent: float = 0.10
-    max_hold_time_days: int = 7
     max_portfolio_size: int = 15
     trade_type: Literal['paper', 'live'] = 'paper'
 
@@ -43,9 +42,8 @@ class Job(BaseModel):
 
 # trade related data models
 class Rule(BaseModel):
-    stop_loss: Optional[float]
-    take_profit: Optional[float]
-    sell_date: Optional[datetime]
+    stop_loss_pct: Optional[float]
+    take_profit_pct: Optional[float]
 
 
 class Stock(BaseModel):

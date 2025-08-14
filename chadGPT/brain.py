@@ -129,3 +129,4 @@ if __name__ == "__main__":
     answer = llm.ask(request)
     assert isinstance(answer, request.expected_format)
     print(type(answer))
+    print(answer.model_dump_json(indent=2, exclude_none=True))

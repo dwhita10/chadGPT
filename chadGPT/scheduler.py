@@ -3,7 +3,7 @@ from typing import Any
 
 from chadGPT.data_models import Task, Job
 
-class Orchestrator(ABC):
+class Scheduler(ABC):
     def __init__(self, job: Job):
         self.job = job
     

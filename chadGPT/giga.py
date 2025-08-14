@@ -1,12 +1,14 @@
-from pydantic import BaseModel
+from abc import ABC, abstractmethod
 from datetime import datetime, timezone, timedelta
+
+from pydantic import BaseModel
 
 from chadGPT.data_models import (
     Job, Task, LLMRequest
 )
 from chadGPT.brain import BaseLLM, apply_delimiter
 from chadGPT.data_models import Preferences, StrategyResponse, RelativePortfolio, Portfolio
-from chadGPT.trader import BaseBroker, BaseMarketResearch
+from chadGPT.trader import BaseBroker, BaseMarketResearch, make_trades_from_portfolio
 from chadGPT.db import BaseDatabase, SQLiteDatabase
 
 # general workflow
@@ -14,7 +16,17 @@ from chadGPT.db import BaseDatabase, SQLiteDatabase
 # 2. Recommend portfolio updates (frequency)
 # 3. Implement portfolio update (trades)
 
-class Giga:
+class Orchestrator(ABC):
+    @abstractmethod
+    def create_jobs(self) -> list[Job]:
+        """
+        Create a job that will run the strategy generation and portfolio update
+        at the specified frequency.
+        """
+        pass
+
+
+class Giga(Orchestrator):
     def __init__(
         self, broker: BaseBroker, 
         market: BaseMarketResearch, 
@@ -130,7 +142,6 @@ class Giga:
 
         return context
 
-
     def generate_strategy(self, save_to_db: bool = True) -> StrategyResponse:
         context = self.gather_research_context()
         prompt = self.user_preferences.research_prompt
@@ -177,7 +188,7 @@ class Giga:
 
         return strategy
     
-    def update_portfolio(
+    def get_portfolio_updates(
         self, strategy: StrategyResponse | None = None, save_to_db: bool = True
     ) -> RelativePortfolio:
         context = self.gather_portfolio_update_context(strategy=strategy)
@@ -215,4 +226,73 @@ class Giga:
             )
 
         return relative_portfolio
+
+    def giga_pipeline(self):
+        """
+        1. Generate a new investment strategy
+        2. Update the portfolio based on the strategy
+        3. Execute trades to rebalance the portfolio
+        """
+        strategy = self.generate_strategy()
+        trades = self.update_portfolio_pipeline(strategy=strategy)
+        
+        return strategy, trades
+
+    def update_portfolio_pipeline(self, strategy: StrategyResponse | None = None, save_to_db: bool = True):
+        """
+        2. Update the portfolio based on the strategy
+        3. Execute trades to rebalance the portfolio
+        """
+        relative_portfolio = self.get_portfolio_updates(strategy=strategy)
+        
+        current_portfolio = self.broker.get_portfolio()
+        trades = make_trades_from_portfolio(
+            current_portfolio=current_portfolio,
+            desired_portfolio=relative_portfolio
+        )
+        
+        for trade in trades:
+            self.broker.create_order(trade)
+        
+        return trades
+
+
+    def create_jobs(self) -> list[Job]:
+        """
+        Create a list of jobs that will run the 
+        strategy generation and portfolio update
+        at the specified frequency.
+        """
+        tasks = [
+            Task(
+                func=self.update_portfolio_pipeline
+            )
+        ]
+        schedule_dict = {
+            'hourly': '0 * * * *',
+            'daily': '0 5 * * *',
+            'weekly': '0 5 * * 0',
+            'monthly': '0 0 1 * *'
+        }
+        schedule = schedule_dict.get(
+            self.user_preferences.portfolio_update_frequency, '0 0 * * 0'
+        )
+
+        portfolio_update_job = Job(
+            schedule=schedule,
+            tasks=tasks
+        )
+
+        research_update_job = Job(
+            schedule=schedule_dict.get(
+                self.user_preferences.strategy_update_frequency, '0 0 * * 0'
+            ),
+            tasks=[
+                Task(
+                    func=self.generate_strategy
+                )
+            ]
+        )
+        return [portfolio_update_job, research_update_job]
+
 
