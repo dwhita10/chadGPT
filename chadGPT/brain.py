@@ -26,7 +26,7 @@ def format_data_model(model: BaseModel | str | list[BaseModel | str]) -> str:
         query += "\n}"
     elif isinstance(model, BaseModel):
         query = (
-            f"{model.__name__}: " +
+            f"{model.__class__.__name__}: " +
             f"{model.model_dump_json(indent=None, warnings=False)}"
         )
     elif isinstance(model, str):
@@ -36,6 +36,8 @@ def format_data_model(model: BaseModel | str | list[BaseModel | str]) -> str:
             f'Arg model must be type BaseModel or list[BaseModel]; ' +
             f'got {type(model)}'
         )
+    
+    return query
 
 
 class BaseLLM(ABC):

@@ -2,7 +2,9 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from typing import Literal, Optional
 
+
 from sqlmodel import Field, SQLModel
+from sqlalchemy import Column, JSON
 
 
 class ActionTable(SQLModel, table=True):
@@ -10,7 +12,7 @@ class ActionTable(SQLModel, table=True):
     user: str = Field(index=True)
     timestamp: datetime = Field(default_factory=datetime.now(timezone.utc))
     category: str
-    action: dict
+    action: dict = Field(sa_column=Column(JSON))
 
 
 class BaseDatabase(ABC):

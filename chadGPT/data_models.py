@@ -20,7 +20,7 @@ class Preferences(BaseModel):
 class LLMRequest(BaseModel):
     prompt: str
     background: Optional[str]
-    context: Optional[list[BaseModel] | str]
+    context: Optional[list[BaseModel | str] | str]
     expected_format: Optional[Type[BaseModel]]
 
 
@@ -32,7 +32,7 @@ class StrategyResponse(BaseModel):
 # Orchestrator related data models
 class Task(BaseModel):
     func: Callable # output should be a tuple
-    args: tuple
+    args: tuple | None = None
 
 
 class Job(BaseModel):

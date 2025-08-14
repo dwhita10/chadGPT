@@ -61,7 +61,7 @@ class Giga(Orchestrator):
         context: list[BaseModel | str] = []
         current_portfolio = self.broker.get_portfolio()
         context.append(current_portfolio)
-        previous_strategy = BaseLLM.apply_delimiter(
+        previous_strategy = apply_delimiter(
             block_name='previous_strategy', 
             query=self.get_previous_strategy(),
             delimiter_type='caps:'
@@ -69,13 +69,13 @@ class Giga(Orchestrator):
         context.append(previous_strategy)
         # additional market data could be gathered here as needed
         update_frequency = self.user_preferences.portfolio_update_frequency
-        context.append(BaseLLM.apply_delimiter(
+        context.append(apply_delimiter(
             block_name='portfolio_update_frequency',
             query=update_frequency,
             delimiter_type='caps:'
         ))
         strategy_update_frequency = self.user_preferences.strategy_update_frequency
-        context.append(BaseLLM.apply_delimiter(
+        context.append(apply_delimiter(
             block_name='strategy_update_frequency',
             query=strategy_update_frequency,
             delimiter_type='caps:'
@@ -104,7 +104,7 @@ class Giga(Orchestrator):
         else:
             strategy_report = str(strategy)
         
-        context.append(BaseLLM.apply_delimiter(
+        context.append(apply_delimiter(
             block_name='strategy_report',
             query=strategy_report,
             delimiter_type='caps:'
@@ -117,7 +117,7 @@ class Giga(Orchestrator):
             'weekly': '7'
         }
         timestamp: str = datetime.now(timezone.utc).isoformat()
-        context.append(BaseLLM.apply_delimiter(
+        context.append(apply_delimiter(
             block_name='current_time',
             query=timestamp,
             delimiter_type='caps:'
@@ -255,7 +255,6 @@ class Giga(Orchestrator):
             self.broker.create_order(trade)
         
         return trades
-
 
     def create_jobs(self) -> list[Job]:
         """
