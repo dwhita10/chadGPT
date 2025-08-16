@@ -9,7 +9,7 @@ from typing import Any
 from chadGPT.giga import Giga
 from chadGPT.trader import BaseBroker, BaseMarketResearch
 from chadGPT.brain import BaseLLM
-from chadGPT.db import BaseDatabase
+from chadGPT.db import SQLiteDatabase
 
 from chadGPT.data_models import (
     Preferences, StrategyResponse, RelativePortfolio, Portfolio, Position, Rule,
@@ -56,21 +56,7 @@ class DummyMarket(BaseMarketResearch):
     def get_historic_value(self, symbol: str, start: datetime, end: datetime, aggregation: str):
         return []
 
-class DummyDB(BaseDatabase):
-    def __init__(self):
-        self.actions = []
 
-    def write(self, user: str, category: str, action: dict) -> None:
-        self.actions.append({'user': user, 'category': category, 'action': action})
-
-    def read(self, **filters) -> list[Any]:
-        # Return a dummy previous strategy
-        if filters.get('category') == 'strategy':
-            class DummyAction:
-                def __init__(self):
-                    self.action = {'response': {'strategy_report': 'Prev strategy', 'stock_symbols_to_watch': ['AAPL']}}
-            return [DummyAction()]
-        return []
 
 @pytest.fixture(scope="module")
 def dummy_llm():
@@ -86,7 +72,11 @@ def dummy_market():
 
 @pytest.fixture(scope="module")
 def dummy_db():
-    return DummyDB()
+    db = SQLiteDatabase("sqlite:///data/test.db")
+    yield db
+    # cleanup
+    db.engine.dispose()
+    os.remove("data/test.db")
 
 @pytest.fixture(scope="module")
 def giga(dummy_broker, dummy_market, dummy_llm, dummy_db):
