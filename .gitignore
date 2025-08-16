@@ -1,7 +1,7 @@
 **/__pycache__
 .venv
 
-data/*.db
+data/*
 
 secrets.txt
 .coverage

@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone, timedelta
+import logging
+import os
 
 from pydantic import BaseModel
 
@@ -15,6 +17,11 @@ from chadGPT.db import BaseDatabase, SQLiteDatabase
 # 1. Strategy Generation/Update (frequency)
 # 2. Recommend portfolio updates (frequency)
 # 3. Implement portfolio update (trades)
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 
 class Orchestrator(ABC):
     @abstractmethod
@@ -36,6 +43,7 @@ class Giga(Orchestrator):
         db: BaseDatabase = SQLiteDatabase("sqlite:///data/chadGPT.db"),
         user: str = "default_user",
     ):
+        print('running')
         self.broker = broker
         self.market = market
         self.portfolio_update_brain = portfolio_update_brain
@@ -91,7 +99,7 @@ class Giga(Orchestrator):
         if strategy is None:
             strategy = self.get_previous_strategy()
         
-        stock_symobols_to_watch = []
+        stock_symbols_to_watch = []
 
         # if strategy is a string, it is likely a report or summary
         if isinstance(strategy, str):
@@ -126,7 +134,7 @@ class Giga(Orchestrator):
         look_back_days = update_period_dict.get(
             self.user_preferences.portfolio_update_frequency, '7'
         )
-        for symbol in stock_symobols_to_watch:
+        for symbol in stock_symbols_to_watch:
             historic_data = self.market.get_historic_value(
                 symbol=symbol,
                 start=datetime.now(timezone.utc).isoformat(),
@@ -250,6 +258,16 @@ class Giga(Orchestrator):
             current_portfolio=current_portfolio,
             desired_portfolio=relative_portfolio
         )
+        if save_to_db:
+            self.db.write(
+                user=self.user, 
+                category='trades', 
+                action={
+                    'strategy': strategy.model_dump() if strategy else None,
+                    'relative_portfolio': relative_portfolio.model_dump(),
+                    'trades': [trade.model_dump() for trade in trades]
+                }
+            )
         
         for trade in trades:
             self.broker.create_order(trade)
@@ -294,4 +312,36 @@ class Giga(Orchestrator):
         )
         return [portfolio_update_job, research_update_job]
 
+    def save_latest_strategy(self, file_path: str | None = None):
+        if file_path is None:
+            file_path = 'latest_strategy.md'
+        if not file_path.endswith('.md'):
+            file_path += '.md'
+        strategy = self.get_previous_strategy()
+        if isinstance(strategy, StrategyResponse):
+            report = strategy.strategy_report
+            # save as markdown file
+            with open(file_path, 'w') as f:
+                f.write(f"# Latest Strategy Report\n\n")
+                f.write(f"Generated on: {datetime.now(timezone.utc).isoformat()}\n\n")
+                f.write(report)
+        else:
+            print(strategy)
+
+if __name__ == "__main__":
+    # run a research report pipeline
+    from chadGPT.brain import OpenAILLM
+    from chadGPT.trader import FakeBroker, FakeMarketResearch
+    giga = Giga(
+        broker=FakeBroker(),
+        market=FakeMarketResearch(),
+        portfolio_update_brain=OpenAILLM(web_search=False),
+        research_brain=OpenAILLM(web_search=True),
+        user_preferences=Preferences(),
+        db=SQLiteDatabase("sqlite:///data/pipeline-test.db")
+    )
+    giga.save_latest_strategy()
+    #strategy = giga.generate_strategy(save_to_db=True)
+    #print(strategy.model_dump_json(indent=2))
+    # trades = giga.update_portfolio_pipeline(strategy=strategy, save_to_db=True)
 

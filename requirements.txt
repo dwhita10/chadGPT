@@ -2,3 +2,4 @@ pydantic
 pyperclip
 sqlalchemy
 sqlmodel
+openai

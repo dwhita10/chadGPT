@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timezone
 
 from chadGPT.data_models import (
     TradeOrder, Rule, Position, Portfolio, RelativePortfolio,
@@ -94,13 +94,45 @@ class FakeBroker(BaseBroker):
     def get_portfolio(self) -> Portfolio:
         # return a dummy portfolio for testing
         return Portfolio(
-            total_value=10000.0,
-            cash=2000.0,
+            total_value=100.0,
+            cash=100.0,
             positions=[
-                Position(symbol='AAPL', shares=10, value=1500.0, rules=Rule()),
-                Position(symbol='GOOGL', shares=5, value=2000.0, rules=Rule()),
-                Position(symbol='TSLA', shares=8, value=2500.0, rules=Rule()),
-            ]
+            ],
+            timestamp=datetime.now(timezone.utc)
         )
+    
+class FakeMarketResearch(BaseMarketResearch):
+    def get_current_value(self, symbol: str) -> Stock:
+        return Stock(
+            symbol=symbol,
+            price=100.0,
+            time=datetime.now()
+        )
+    
+    def get_historic_value(self, symbol: str, start: datetime, end: datetime, aggregation: str) -> list[StockBar]:
+        return [
+            StockBar(
+                symbol=symbol,
+                time=start,
+                open=100.0,
+                high=110.0,
+                low=90.0,
+                close=105.0,
+                volume=1000,
+                trade_count=10,
+                volume_weighted_avg_price=102.0
+            ),
+            StockBar(
+                symbol=symbol,
+                time=end,
+                open=105.0,
+                high=115.0,
+                low=95.0,
+                close=110.0,
+                volume=1500,
+                trade_count=15,
+                volume_weighted_avg_price=108.0
+            )
+        ]
 
 # TODO: Alpaca-Py Implementation https://alpaca.markets/sdks/python/getting_started.html
